@@ -224,7 +224,7 @@ func PrettyJSON(t *testing.T, r *http.Response) {
 }
 
 // CaptureResponse unmarshals JSON response.
-func CaptureResponse(ptr any) ResponseFilter {
+func CaptureResponse[T any](ptr *T) ResponseFilter {
 	return func(t *testing.T, r *http.Response) {
 		t.Helper()
 
