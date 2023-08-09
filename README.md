@@ -18,4 +18,12 @@ t.Run(APITestName, func(t *testing.T) {
 })
 ```
 
+For begin, run tests with `-golden` option to generate or update golden files.
+
+```sh
+go test -v ./... -golden
+```
+
+After updating golden files, run tests without `-golden` option to compare the responses.
+
 For more detail, see [examples](https://github.com/satorunooshie/e2e/blob/main/example/main_test.go).
