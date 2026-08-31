@@ -13,33 +13,45 @@ import (
 
 // Runner runs HTTP end-to-end tests against a handler.
 type Runner struct {
-	handler http.Handler
+	client *http.Client
 }
 
-// NewRunner returns a Runner that sends requests to handler.
-func NewRunner(handler http.Handler) *Runner {
-	return &Runner{handler: handler}
+// NewRunner returns a Runner backed by httptest.NewTestServer.
+func NewRunner(t testing.TB, handler http.Handler) *Runner {
+	t.Helper()
+
+	server := httptest.NewTestServer(t, handler)
+	client := server.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	return &Runner{client: client}
 }
 
 // ResponseFilter is a function to modify HTTP response.
 type ResponseFilter func(t *testing.T, r *http.Response)
 
-// RunTest sends an HTTP request to the runner's handler, then checks the status
-// code and compares the response with the golden file. When -e2e.golden is
-// set, RunTest updates the golden file instead of comparing it.
+// RunTest sends an HTTP request through the runner's test server, then checks
+// the status code and compares the response with the golden file. When
+// -e2e.golden is set, RunTest updates the golden file instead of comparing it.
 func (runner *Runner) RunTest(t *testing.T, r *http.Request, want int, filters ...ResponseFilter) {
 	t.Helper()
 
-	if runner == nil || runner.handler == nil {
-		t.Fatal("runner handler is not registered")
+	if runner == nil || runner.client == nil {
+		t.Fatal("runner client is not registered")
 	}
 
 	t.Logf(">>> %s %s\n", r.Method, r.URL)
 
-	w := httptest.NewRecorder()
-	runner.handler.ServeHTTP(w, r)
-
-	got := w.Result()
+	got, err := runner.client.Do(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := got.Body.Close(); err != nil {
+			t.Errorf("close response body: %v", err)
+		}
+	}()
 	if got.StatusCode != want {
 		t.Errorf("HTTP status code: %d, want: %d\n", got.StatusCode, want)
 	}
@@ -51,9 +63,6 @@ func (runner *Runner) RunTest(t *testing.T, r *http.Request, want int, filters .
 		body, err := io.ReadAll(rc)
 		if err != nil {
 			t.Fatal(err)
-		}
-		if isJSONResponse(got) && got.StatusCode != http.StatusNoContent {
-			body = indentJSON(t, body)
 		}
 
 		dump, err := httputil.DumpResponse(got, false)
@@ -67,6 +76,8 @@ func (runner *Runner) RunTest(t *testing.T, r *http.Request, want int, filters .
 	for _, f := range filters {
 		f(t, got)
 	}
+	got.Header.Del("Date")
+	resetResponseBody(t, got)
 
 	dump, err := httputil.DumpResponse(got, true)
 	if err != nil {
@@ -76,6 +87,24 @@ func (runner *Runner) RunTest(t *testing.T, r *http.Request, want int, filters .
 	updateOrCompareGolden(t, "HTTP response", dump)
 
 	t.Logf("<<< %s\n", goldenFileName(t))
+}
+
+func resetResponseBody(t *testing.T, r *http.Response) {
+	t.Helper()
+
+	if r.Body == nil || r.Body == http.NoBody {
+		r.Body = http.NoBody
+		r.ContentLength = 0
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = r.Body.Close()
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	r.ContentLength = int64(len(body))
 }
 
 // This is a modified version of httputil.drainBody for this test.

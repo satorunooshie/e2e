@@ -43,13 +43,13 @@ func newRouter() http.Handler {
 	// GET: StatusOK
 	mux.HandleFunc("/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"hoge":"fuga"}`))
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"hoge":"fuga"}`))
 	})
 	mux.HandleFunc("/v2/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"ping":"pong"}`))
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ping":"pong"}`))
 	})
 
 	// GET: http.StatusOK
@@ -62,12 +62,12 @@ func newRouter() http.Handler {
 				http.Error(w, "Server error", http.StatusInternalServerError)
 			case "new":
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"name":"Giorno Giovanna"}`))
 				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"name":"Giorno Giovanna"}`))
 			default:
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"name":"JoJo"}`))
 				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"name":"JoJo"}`))
 			}
 		case http.MethodPut:
 			w.WriteHeader(http.StatusNoContent)

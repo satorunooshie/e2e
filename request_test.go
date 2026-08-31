@@ -80,6 +80,12 @@ func TestNewRequest(t *testing.T) {
 			if req.URL.Path != "/users" {
 				t.Fatalf("path = %q", req.URL.Path)
 			}
+			if req.URL.Scheme != "http" {
+				t.Fatalf("scheme = %q", req.URL.Scheme)
+			}
+			if req.URL.Host != "example.com" {
+				t.Fatalf("host = %q", req.URL.Host)
+			}
 			tt.assert(t, req)
 		})
 	}

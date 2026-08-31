@@ -2,20 +2,12 @@ package main
 
 import (
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/satorunooshie/e2e/v2"
 )
-
-var runner *e2e.Runner
-
-func TestMain(m *testing.M) {
-	runner = e2e.NewRunner(newRouter())
-	os.Exit(m.Run())
-}
 
 // APITestName returns golden file name.
 // ex) v1_health_200_success.golden
@@ -25,11 +17,12 @@ func APITestName(endpoint string, code int, description ...string) string {
 
 // TestHealthEndpoint shows multiple endpoints example.
 func TestHealthEndpoint(t *testing.T) {
-	testHealthEndpoint(t, "/v1/health")
-	testHealthEndpoint(t, "/v2/health")
+	runner := e2e.NewRunner(t, newRouter())
+	testHealthEndpoint(t, runner, "/v1/health")
+	testHealthEndpoint(t, runner, "/v2/health")
 }
 
-func testHealthEndpoint(t *testing.T, endpoint string) {
+func testHealthEndpoint(t *testing.T, runner *e2e.Runner, endpoint string) {
 	t.Helper()
 
 	tests := []struct {
@@ -49,6 +42,7 @@ func testHealthEndpoint(t *testing.T, endpoint string) {
 
 func TestUserGetEndpoint(t *testing.T) {
 	const endpoint = "/v1/user"
+	runner := e2e.NewRunner(t, newRouter())
 
 	tests := []struct {
 		description []string
@@ -75,6 +69,7 @@ func TestUserGetEndpoint(t *testing.T) {
 // TestUserPostEndpoint shows ModifyJSON example.
 func TestUserPostEndpoint(t *testing.T) {
 	const endpoint = "/v1/user"
+	runner := e2e.NewRunner(t, newRouter())
 
 	tests := []struct {
 		description []string
@@ -101,6 +96,7 @@ func TestUserPostEndpoint(t *testing.T) {
 // TestUserPutEndpoint shows http.StatusNoContent example.
 func TestUserPutEndpoint(t *testing.T) {
 	const endpoint = "/v1/user"
+	runner := e2e.NewRunner(t, newRouter())
 
 	tests := []struct {
 		description []string
@@ -126,6 +122,7 @@ func TestUserPutEndpoint(t *testing.T) {
 
 // TestUserScenario shows a scenario testing example.
 func TestUserScenario(t *testing.T) {
+	runner := e2e.NewRunner(t, newRouter())
 	resp := struct{ ID int }{}
 	// TestName: number methodName description
 	t.Run("1 UserPost registration", func(t *testing.T) {

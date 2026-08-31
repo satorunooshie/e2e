@@ -7,10 +7,12 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
-	"net/http/httptest"
 	"net/textproto"
+	"net/url"
 	"testing"
 )
+
+const defaultRequestBaseURL = "http://example.com"
 
 type RequestOption func(*http.Request)
 
@@ -55,13 +57,27 @@ func WithCookies(cookies ...*http.Cookie) RequestOption {
 	}
 }
 
-// NewRequest creates a new HTTP request and applies options.
+// NewRequest creates a new HTTP client request and applies options. Relative
+// endpoints are resolved against http://example.com, which is routed to the
+// runner's in-memory test server.
 func NewRequest(method, endpoint string, body io.Reader, options ...RequestOption) *http.Request {
-	r := httptest.NewRequest(method, endpoint, body)
+	r, err := http.NewRequest(method, requestURL(endpoint), body)
+	if err != nil {
+		panic(err)
+	}
 	for _, opt := range options {
 		opt(r)
 	}
 	return r
+}
+
+func requestURL(endpoint string) string {
+	u, err := url.Parse(endpoint)
+	if err != nil || u.IsAbs() {
+		return endpoint
+	}
+	base, _ := url.Parse(defaultRequestBaseURL)
+	return base.ResolveReference(u).String()
 }
 
 // JSONBody encodes value and returns it as an io.Reader.
