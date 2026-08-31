@@ -67,7 +67,7 @@ func TestURLValueModifier(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.modifier.ModifyProtoValue(t, tt.value)
 			if got != tt.want {
-				t.Fatalf("URL modifier = %q, want %q", got, tt.want)
+				t.Errorf("URL modifier = %q, want %q", got, tt.want)
 			}
 		})
 	}

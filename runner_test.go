@@ -54,7 +54,7 @@ func TestGoldenFileName(t *testing.T) {
 		want := filepath.Join(defaultGoldenDir, t.Name()+".golden")
 
 		if got != want {
-			t.Fatalf("goldenFileName() = %q, want %q", got, want)
+			t.Errorf("goldenFileName() = %q, want %q", got, want)
 		}
 	})
 
@@ -63,7 +63,7 @@ func TestGoldenFileName(t *testing.T) {
 		want := filepath.Join("testdata/http", t.Name()+".golden")
 
 		if got != want {
-			t.Fatalf("goldenFileName() = %q, want %q", got, want)
+			t.Errorf("goldenFileName() = %q, want %q", got, want)
 		}
 	})
 }
@@ -81,7 +81,7 @@ func TestNewRunnerOptions(t *testing.T) {
 		runner := NewRunner(t, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), WithClientTimeout(2*time.Second))
 
 		if got := runner.client.Timeout; got != 2*time.Second {
-			t.Fatalf("client timeout = %s, want %s", got, 2*time.Second)
+			t.Errorf("client timeout = %s, want %s", got, 2*time.Second)
 		}
 	})
 
@@ -89,7 +89,7 @@ func TestNewRunnerOptions(t *testing.T) {
 		runner := NewRunner(t, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), WithGoldenDir("testdata/http"))
 
 		if got := runner.goldenDir; got != "testdata/http" {
-			t.Fatalf("goldenDir = %q, want %q", got, "testdata/http")
+			t.Errorf("goldenDir = %q, want %q", got, "testdata/http")
 		}
 	})
 
@@ -113,7 +113,7 @@ func TestNewRunnerOptions(t *testing.T) {
 			}
 		})
 		if got := res.StatusCode; got != http.StatusNoContent {
-			t.Fatalf("status code = %d, want %d", got, http.StatusNoContent)
+			t.Errorf("status code = %d, want %d", got, http.StatusNoContent)
 		}
 	})
 
@@ -144,7 +144,7 @@ func TestNewRunnerOptions(t *testing.T) {
 			}
 		})
 		if got := res.StatusCode; got != http.StatusNoContent {
-			t.Fatalf("status code = %d, want %d", got, http.StatusNoContent)
+			t.Errorf("status code = %d, want %d", got, http.StatusNoContent)
 		}
 	})
 }
