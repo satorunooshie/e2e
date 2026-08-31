@@ -1,37 +1,16 @@
 package main
 
 import (
-	"log"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	e2egrpc "github.com/satorunooshie/e2e/grpc/v2"
 	"google.golang.org/grpc/codes"
 )
 
-var (
-	runner *e2egrpc.Runner
-	client ProfileServiceClient
-)
-
-func TestMain(m *testing.M) {
-	var err error
-	runner, err = e2egrpc.NewRunner(newServer(), e2egrpc.UseJSONNames())
-	if err != nil {
-		log.Printf("new gRPC runner: %v", err)
-		os.Exit(1)
-	}
-	client = NewProfileServiceClient(runner.Conn())
-
-	code := m.Run()
-	if err := runner.Close(); err != nil {
-		log.Printf("close gRPC runner: %v", err)
-		code = 1
-	}
-	os.Exit(code)
-}
+const unaryTimeout = 3 * time.Second
 
 func GRPCTestName(funcName string, code codes.Code, description ...string) string {
 	elems := append([]string{"v1", code.String()}, description...)
@@ -39,6 +18,9 @@ func GRPCTestName(funcName string, code codes.Code, description ...string) strin
 }
 
 func TestProfileService(t *testing.T) {
+	runner := e2egrpc.NewRunner(t, newServer(), e2egrpc.UseJSONNames(), e2egrpc.WithUnaryTimeout(unaryTimeout))
+	client := NewProfileServiceClient(runner.Conn())
+
 	tests := []struct {
 		description []string
 		request     *GetProfileRequest

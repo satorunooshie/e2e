@@ -3,6 +3,7 @@ package e2e
 import (
 	"net/http"
 	"testing"
+	"time"
 )
 
 func TestRunnerRunTest(t *testing.T) {
@@ -44,4 +45,77 @@ func TestRunnerRunTest(t *testing.T) {
 			tt.run(t, NewRequest(http.MethodGet, tt.path, nil))
 		})
 	}
+}
+
+func TestNewRunnerOptions(t *testing.T) {
+	t.Run("ignores nil option", func(t *testing.T) {
+		runner := NewRunner(t, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), nil)
+
+		if runner == nil {
+			t.Fatal("runner is nil")
+		}
+	})
+
+	t.Run("sets client timeout", func(t *testing.T) {
+		runner := NewRunner(t, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), WithClientTimeout(2*time.Second))
+
+		if got := runner.client.Timeout; got != 2*time.Second {
+			t.Fatalf("client timeout = %s, want %s", got, 2*time.Second)
+		}
+	})
+
+	t.Run("follows redirects when configured", func(t *testing.T) {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/redirect" {
+				http.Redirect(w, r, "/done", http.StatusFound)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+		})
+		runner := NewRunner(t, handler, FollowRedirects())
+
+		res, err := runner.client.Get("http://example.com/redirect")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := res.Body.Close(); err != nil {
+				t.Errorf("close response body: %v", err)
+			}
+		})
+		if got := res.StatusCode; got != http.StatusNoContent {
+			t.Fatalf("status code = %d, want %d", got, http.StatusNoContent)
+		}
+	})
+
+	t.Run("configures server before client use", func(t *testing.T) {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server, ok := r.Context().Value(http.ServerContextKey).(*http.Server)
+			if !ok {
+				http.Error(w, "request context does not contain server", http.StatusInternalServerError)
+				return
+			}
+			if got := server.ReadHeaderTimeout; got != time.Second {
+				http.Error(w, "server ReadHeaderTimeout is not configured", http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+		})
+		runner := NewRunner(t, handler, WithServerConfig(func(server *http.Server) {
+			server.ReadHeaderTimeout = time.Second
+		}))
+
+		res, err := runner.client.Get("http://example.com/")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := res.Body.Close(); err != nil {
+				t.Errorf("close response body: %v", err)
+			}
+		})
+		if got := res.StatusCode; got != http.StatusNoContent {
+			t.Fatalf("status code = %d, want %d", got, http.StatusNoContent)
+		}
+	})
 }

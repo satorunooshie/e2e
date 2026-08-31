@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -31,6 +32,9 @@ type Runner struct {
 	listener         *bufconn.Listener
 	conn             *grpc.ClientConn
 	protoJSONOptions protojson.MarshalOptions
+	unaryTimeout     time.Duration
+	closeOnce        sync.Once
+	closeErr         error
 }
 
 // RunnerOption configures a Runner.
@@ -44,17 +48,32 @@ func UseJSONNames() RunnerOption {
 	}
 }
 
-// NewRunner starts server on an in-process listener and returns a Runner.
-func NewRunner(server *grpc.Server, options ...RunnerOption) (*Runner, error) {
+// WithUnaryTimeout sets the timeout for RunUnary calls.
+func WithUnaryTimeout(timeout time.Duration) RunnerOption {
+	return func(runner *Runner) {
+		runner.unaryTimeout = timeout
+	}
+}
+
+// NewRunner starts server on an in-process listener and returns a Runner. It
+// registers a cleanup function with t to close the runner.
+func NewRunner(t testing.TB, server *grpc.Server, options ...RunnerOption) *Runner {
+	t.Helper()
+
 	if server == nil {
-		return nil, errors.New("gRPC server is nil")
+		t.Fatal("gRPC server is nil")
+		return nil
 	}
 
 	runner := &Runner{
 		server:           server,
 		protoJSONOptions: defaultProtoJSONOptions(),
+		unaryTimeout:     defaultUnaryTimeout,
 	}
 	for _, option := range options {
+		if option == nil {
+			continue
+		}
 		option(runner)
 	}
 
@@ -62,7 +81,7 @@ func NewRunner(server *grpc.Server, options ...RunnerOption) (*Runner, error) {
 	runner.listener = listener
 	go func() {
 		if err := server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
-			panic(err)
+			t.Errorf("serve gRPC test server: %v", err)
 		}
 	}()
 
@@ -76,11 +95,18 @@ func NewRunner(server *grpc.Server, options ...RunnerOption) (*Runner, error) {
 	if err != nil {
 		server.Stop()
 		_ = listener.Close()
-		return nil, err
+		t.Fatal(err)
+		return nil
 	}
 	runner.conn = conn
 
-	return runner, nil
+	t.Cleanup(func() {
+		if err := runner.Close(); err != nil {
+			t.Errorf("close gRPC runner: %v", err)
+		}
+	})
+
+	return runner
 }
 
 // Conn returns the client connection to the runner's in-process server.
@@ -97,18 +123,21 @@ func (runner *Runner) Close() error {
 		return nil
 	}
 
-	var closeErr error
-	if runner.conn != nil {
-		closeErr = runner.conn.Close()
-	}
-	if runner.server != nil {
-		runner.server.Stop()
-	}
-	var listenerErr error
-	if runner.listener != nil {
-		listenerErr = runner.listener.Close()
-	}
-	return errors.Join(closeErr, listenerErr)
+	runner.closeOnce.Do(func() {
+		var closeErr error
+		if runner.conn != nil {
+			closeErr = runner.conn.Close()
+		}
+		if runner.server != nil {
+			runner.server.Stop()
+		}
+		var listenerErr error
+		if runner.listener != nil {
+			listenerErr = runner.listener.Close()
+		}
+		runner.closeErr = errors.Join(closeErr, listenerErr)
+	})
+	return runner.closeErr
 }
 
 // ResponseFilter can normalize nondeterministic gRPC response fields before
@@ -153,7 +182,7 @@ func (runner *Runner) RunUnary[Req proto.Message, Res proto.Message](
 
 	t.Logf(">>> %s\n", method)
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultUnaryTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.unaryTimeout)
 	defer cancel()
 
 	var headers, trailers metadata.MD

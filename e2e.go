@@ -9,6 +9,7 @@ import (
 	"net/http/httputil"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Runner runs HTTP end-to-end tests against a handler.
@@ -16,16 +17,81 @@ type Runner struct {
 	client *http.Client
 }
 
+type runnerConfig struct {
+	configureServer []func(*http.Server)
+	configureClient []func(*http.Client)
+}
+
+// RunnerOption configures a Runner.
+type RunnerOption func(*runnerConfig)
+
+// WithServerConfig applies configure to the runner's HTTP server before it
+// starts.
+func WithServerConfig(configure func(*http.Server)) RunnerOption {
+	return func(config *runnerConfig) {
+		if configure != nil {
+			config.configureServer = append(config.configureServer, configure)
+		}
+	}
+}
+
+// WithClientConfig applies configure to the runner's HTTP client.
+func WithClientConfig(configure func(*http.Client)) RunnerOption {
+	return func(config *runnerConfig) {
+		if configure != nil {
+			config.configureClient = append(config.configureClient, configure)
+		}
+	}
+}
+
+// WithClientTimeout sets the runner's HTTP client timeout.
+func WithClientTimeout(timeout time.Duration) RunnerOption {
+	return WithClientConfig(func(client *http.Client) {
+		client.Timeout = timeout
+	})
+}
+
+// FollowRedirects lets the runner's HTTP client follow redirects.
+func FollowRedirects() RunnerOption {
+	return WithClientConfig(func(client *http.Client) {
+		client.CheckRedirect = nil
+	})
+}
+
 // NewRunner returns a Runner backed by httptest.NewTestServer.
-func NewRunner(t testing.TB, handler http.Handler) *Runner {
+func NewRunner(t testing.TB, handler http.Handler, options ...RunnerOption) *Runner {
 	t.Helper()
 
+	config := defaultRunnerConfig()
+	for _, option := range options {
+		if option == nil {
+			continue
+		}
+		option(&config)
+	}
+
 	server := httptest.NewTestServer(t, handler)
+	for _, configure := range config.configureServer {
+		configure(server.Config)
+	}
+
 	client := server.Client()
-	client.CheckRedirect = func(*http.Request, []*http.Request) error {
-		return http.ErrUseLastResponse
+	for _, configure := range config.configureClient {
+		configure(client)
 	}
 	return &Runner{client: client}
+}
+
+func defaultRunnerConfig() runnerConfig {
+	return runnerConfig{
+		configureClient: []func(*http.Client){
+			func(client *http.Client) {
+				client.CheckRedirect = func(*http.Request, []*http.Request) error {
+					return http.ErrUseLastResponse
+				}
+			},
+		},
+	}
 }
 
 // ResponseFilter is a function to modify HTTP response.

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/grpc"
@@ -163,19 +164,25 @@ func TestNewRunner(t *testing.T) {
 		name              string
 		server            func() *grpc.Server
 		options           []RunnerOption
-		wantErr           string
 		wantUseProtoNames bool
+		wantUnaryTimeout  time.Duration
 	}{
-		{
-			name:    "rejects nil server",
-			wantErr: "gRPC server is nil",
-		},
 		{
 			name: "uses proto names by default",
 			server: func() *grpc.Server {
 				return grpc.NewServer()
 			},
 			wantUseProtoNames: true,
+			wantUnaryTimeout:  defaultUnaryTimeout,
+		},
+		{
+			name: "ignores nil option",
+			server: func() *grpc.Server {
+				return grpc.NewServer()
+			},
+			options:           []RunnerOption{nil},
+			wantUseProtoNames: true,
+			wantUnaryTimeout:  defaultUnaryTimeout,
 		},
 		{
 			name: "uses JSON names when configured",
@@ -184,40 +191,31 @@ func TestNewRunner(t *testing.T) {
 			},
 			options:           []RunnerOption{UseJSONNames()},
 			wantUseProtoNames: false,
+			wantUnaryTimeout:  defaultUnaryTimeout,
+		},
+		{
+			name: "uses unary timeout when configured",
+			server: func() *grpc.Server {
+				return grpc.NewServer()
+			},
+			options:           []RunnerOption{WithUnaryTimeout(2 * time.Second)},
+			wantUseProtoNames: true,
+			wantUnaryTimeout:  2 * time.Second,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var server *grpc.Server
-			if tt.server != nil {
-				server = tt.server()
-			}
-
-			runner, err := NewRunner(server, tt.options...)
-			if tt.wantErr != "" {
-				if err == nil {
-					t.Fatalf("NewRunner() error is nil, want %q", tt.wantErr)
-				}
-				if err.Error() != tt.wantErr {
-					t.Fatalf("NewRunner() error = %q, want %q", err, tt.wantErr)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() {
-				if err := runner.Close(); err != nil {
-					t.Fatal(err)
-				}
-			})
+			runner := NewRunner(t, tt.server(), tt.options...)
 
 			if runner.Conn() == nil {
 				t.Fatal("Conn() is nil")
 			}
 			if got := runner.protoJSONOptions.UseProtoNames; got != tt.wantUseProtoNames {
 				t.Fatalf("UseProtoNames = %t, want %t", got, tt.wantUseProtoNames)
+			}
+			if got := runner.unaryTimeout; got != tt.wantUnaryTimeout {
+				t.Fatalf("unaryTimeout = %s, want %s", got, tt.wantUnaryTimeout)
 			}
 		})
 	}
@@ -289,15 +287,7 @@ func TestRunnerRunUnary(t *testing.T) {
 	server := grpc.NewServer()
 	testpb.RegisterTestServiceServer(server, runnerUnaryService{})
 
-	runner, err := NewRunner(server)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := runner.Close(); err != nil {
-			t.Fatal(err)
-		}
-	})
+	runner := NewRunner(t, server)
 
 	client := testpb.NewTestServiceClient(runner.Conn())
 	tests := []struct {
@@ -364,10 +354,7 @@ func TestRunnerClose(t *testing.T) {
 	})
 
 	t.Run("closes client connection", func(t *testing.T) {
-		runner, err := NewRunner(grpc.NewServer())
-		if err != nil {
-			t.Fatal(err)
-		}
+		runner := NewRunner(t, grpc.NewServer())
 		conn := runner.Conn()
 		if conn == nil {
 			t.Fatal("Conn() is nil")
@@ -376,7 +363,7 @@ func TestRunnerClose(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		err = conn.Invoke(context.Background(), "/missing.Service/Method", &emptypb.Empty{}, &emptypb.Empty{})
+		err := conn.Invoke(context.Background(), "/missing.Service/Method", &emptypb.Empty{}, &emptypb.Empty{})
 		if err == nil {
 			t.Fatal("Invoke() error is nil")
 		}
