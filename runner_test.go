@@ -101,7 +101,7 @@ func TestNewRunnerOptions(t *testing.T) {
 			}
 			w.WriteHeader(http.StatusNoContent)
 		})
-		runner := NewRunner(t, handler, WithServerConfig(func(server *http.Server) {
+		runner := NewRunner(t, handler, WithServer(func(server *http.Server) {
 			server.ReadHeaderTimeout = time.Second
 		}))
 

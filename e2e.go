@@ -25,9 +25,9 @@ type runnerConfig struct {
 // RunnerOption configures a Runner.
 type RunnerOption func(*runnerConfig)
 
-// WithServerConfig applies configure to the runner's HTTP server before it
-// starts.
-func WithServerConfig(configure func(*http.Server)) RunnerOption {
+// WithServer applies configure to the runner's HTTP server before it is first
+// used.
+func WithServer(configure func(*http.Server)) RunnerOption {
 	return func(config *runnerConfig) {
 		if configure != nil {
 			config.configureServer = append(config.configureServer, configure)
@@ -35,8 +35,8 @@ func WithServerConfig(configure func(*http.Server)) RunnerOption {
 	}
 }
 
-// WithClientConfig applies configure to the runner's HTTP client.
-func WithClientConfig(configure func(*http.Client)) RunnerOption {
+// WithClient applies configure to the runner's HTTP client.
+func WithClient(configure func(*http.Client)) RunnerOption {
 	return func(config *runnerConfig) {
 		if configure != nil {
 			config.configureClient = append(config.configureClient, configure)
@@ -46,14 +46,14 @@ func WithClientConfig(configure func(*http.Client)) RunnerOption {
 
 // WithClientTimeout sets the runner's HTTP client timeout.
 func WithClientTimeout(timeout time.Duration) RunnerOption {
-	return WithClientConfig(func(client *http.Client) {
+	return WithClient(func(client *http.Client) {
 		client.Timeout = timeout
 	})
 }
 
 // FollowRedirects lets the runner's HTTP client follow redirects.
 func FollowRedirects() RunnerOption {
-	return WithClientConfig(func(client *http.Client) {
+	return WithClient(func(client *http.Client) {
 		client.CheckRedirect = nil
 	})
 }
