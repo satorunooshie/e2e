@@ -3,5 +3,5 @@ Connection: close
 Content-Type: application/json
 
 {
-  "name": "Giorno Giovanna"
+  "ok": true
 }

@@ -1,0 +1,16 @@
+{
+  "method": "/grpc.testing.TestService/UnaryCall",
+  "status": {
+    "code": "InvalidArgument",
+    "number": 3,
+    "message": "name is required",
+    "details": []
+  },
+  "headers": {},
+  "response": null,
+  "trailers": {
+    "content-type": [
+      "application/grpc"
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "method": "/grpc.testing.TestService/UnaryCall",
+  "status": {
+    "code": "OK",
+    "number": 0,
+    "message": "",
+    "details": []
+  },
+  "headers": {
+    "content-type": [
+      "application/grpc"
+    ],
+    "x-request-id": [
+      "req-1"
+    ]
+  },
+  "response": {
+    "payload": {
+      "body": "aGVsbG8="
+    },
+    "username": "after-filter",
+    "oauth_scope": "users.read",
+    "server_id": "server"
+  },
+  "trailers": {
+    "x-result": [
+      "stored"
+    ]
+  }
+}

@@ -4,5 +4,6 @@ Content-Type: application/json
 
 {
   "created_time": 1677136520,
-  "id": 1
+  "id": 1,
+  "upload_url": "upload-url"
 }

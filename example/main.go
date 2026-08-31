@@ -80,9 +80,16 @@ func newRouter() http.Handler {
 	mux.HandleFunc("/v1/user", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
+			now := time.Now()
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			_, _ = fmt.Fprintf(w, `{"id":1,"created_time":%d}`, time.Now().Unix())
+			_, _ = fmt.Fprintf(
+				w,
+				`{"id":1,"created_time":%d,"upload_url":"https://cdn.example.com/users/1/avatar.png?expires=%d&region=ap-northeast-1&signature=sig-%d"}`,
+				now.Unix(),
+				now.Add(15*time.Minute).Unix(),
+				now.UnixNano(),
+			)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}

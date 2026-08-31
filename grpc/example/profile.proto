@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package e2e.example.profile.v1;
+
+option go_package = "github.com/satorunooshie/e2e/grpc/v2/example;main";
+
+service ProfileService {
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+}
+
+message GetProfileRequest {
+  int64 user_id = 1;
+}
+
+message GetProfileResponse {
+  int64 id = 1;
+  string name = 2;
+  int64 created_unix_time = 3 [json_name = "createdAt"];
+  string upload_url = 4;
+}

@@ -4,5 +4,6 @@ Content-Type: application/json
 
 {
   "created_time": 1677136520,
-  "id": 1
+  "id": 1,
+  "upload_url": "https://cdn.example.com/users/1/avatar.png?expires=int&region=ap-northeast-1&signature=string"
 }

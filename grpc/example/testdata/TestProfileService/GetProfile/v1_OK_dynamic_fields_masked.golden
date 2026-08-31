@@ -1,0 +1,28 @@
+{
+  "method": "/e2e.example.profile.v1.ProfileService/GetProfile",
+  "status": {
+    "code": "OK",
+    "number": 0,
+    "message": "",
+    "details": []
+  },
+  "headers": {
+    "content-type": [
+      "application/grpc"
+    ],
+    "x-request-id": [
+      "req-1"
+    ]
+  },
+  "response": {
+    "id": "1",
+    "name": "Jonathan Joestar",
+    "createdAt": "1677136520",
+    "uploadUrl": "https://cdn.example.com/users/1/avatar.png?expires=int\u0026region=ap-northeast-1\u0026signature=string"
+  },
+  "trailers": {
+    "x-response-source": [
+      "profile"
+    ]
+  }
+}
