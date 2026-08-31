@@ -1,0 +1,25 @@
+{
+  "method": "/e2e.example.profile.v1.ProfileService/GetProfile",
+  "status": {
+    "code": "InvalidArgument",
+    "number": 3,
+    "message": "invalid profile request",
+    "details": [
+      {
+        "fieldViolations": [
+          {
+            "field": "user_id",
+            "description": "must be positive"
+          }
+        ]
+      }
+    ]
+  },
+  "headers": {},
+  "response": null,
+  "trailers": {
+    "content-type": [
+      "application/grpc"
+    ]
+  }
+}

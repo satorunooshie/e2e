@@ -1,0 +1,7 @@
+HTTP/1.1 302 Found
+Content-Length: 30
+Content-Type: text/html; charset=utf-8
+Location: /health
+
+<a href="/health">Found</a>.
+

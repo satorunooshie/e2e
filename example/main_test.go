@@ -5,15 +5,12 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/satorunooshie/e2e"
+	"github.com/satorunooshie/e2e/v2"
 )
 
-func TestMain(m *testing.M) {
-	e2e.RegisterRouter(newRouter())
-
-	m.Run()
-}
+const requestTimeout = 3 * time.Second
 
 // APITestName returns golden file name.
 // ex) v1_health_200_success.golden
@@ -23,11 +20,12 @@ func APITestName(endpoint string, code int, description ...string) string {
 
 // TestHealthEndpoint shows multiple endpoints example.
 func TestHealthEndpoint(t *testing.T) {
-	testHealthEndpoint(t, "/v1/health")
-	testHealthEndpoint(t, "/v2/health")
+	runner := e2e.NewRunner(t, newRouter(), e2e.WithClientTimeout(requestTimeout))
+	testHealthEndpoint(t, runner, "/v1/health")
+	testHealthEndpoint(t, runner, "/v2/health")
 }
 
-func testHealthEndpoint(t *testing.T, endpoint string) {
+func testHealthEndpoint(t *testing.T, runner *e2e.Runner, endpoint string) {
 	t.Helper()
 
 	tests := []struct {
@@ -40,13 +38,14 @@ func testHealthEndpoint(t *testing.T, endpoint string) {
 	for _, tt := range tests {
 		t.Run(APITestName(endpoint, tt.want), func(t *testing.T) {
 			r := e2e.NewRequest(http.MethodGet, endpoint, nil)
-			e2e.RunTest(t, r, tt.want, e2e.PrettyJSON)
+			runner.RunTest(t, r, tt.want, e2e.PrettyJSON)
 		})
 	}
 }
 
 func TestUserGetEndpoint(t *testing.T) {
 	const endpoint = "/v1/user"
+	runner := e2e.NewRunner(t, newRouter(), e2e.WithClientTimeout(requestTimeout))
 
 	tests := []struct {
 		description []string
@@ -65,7 +64,7 @@ func TestUserGetEndpoint(t *testing.T) {
 		t.Run(APITestName(endpoint, tt.want, tt.description...), func(t *testing.T) {
 			endpoint := endpoint + tt.path
 			r := e2e.NewRequest(http.MethodGet, endpoint, nil, tt.opts...)
-			e2e.RunTest(t, r, tt.want)
+			runner.RunTest(t, r, tt.want)
 		})
 	}
 }
@@ -73,6 +72,7 @@ func TestUserGetEndpoint(t *testing.T) {
 // TestUserPostEndpoint shows ModifyJSON example.
 func TestUserPostEndpoint(t *testing.T) {
 	const endpoint = "/v1/user"
+	runner := e2e.NewRunner(t, newRouter(), e2e.WithClientTimeout(requestTimeout))
 
 	tests := []struct {
 		description []string
@@ -88,7 +88,10 @@ func TestUserPostEndpoint(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(APITestName(endpoint, tt.want, tt.description...), func(t *testing.T) {
 			r := e2e.NewRequest(http.MethodPost, endpoint, e2e.JSONBody(t, tt.body))
-			e2e.RunTest(t, r, tt.want, e2e.ModifyJSON(map[string]any{"created_time": 1677136520}), e2e.PrettyJSON)
+			runner.RunTest(t, r, tt.want, e2e.ModifyJSON(e2e.Fields{
+				"created_time": e2e.Verify(UnixTime).ReplaceWith(1677136520),
+				"upload_url":   URLValueModifier(e2e.Verify(URL)).MaskQueryExceptKeys("region"),
+			}), e2e.PrettyJSON)
 		})
 	}
 }
@@ -96,6 +99,7 @@ func TestUserPostEndpoint(t *testing.T) {
 // TestUserPutEndpoint shows http.StatusNoContent example.
 func TestUserPutEndpoint(t *testing.T) {
 	const endpoint = "/v1/user"
+	runner := e2e.NewRunner(t, newRouter(), e2e.WithClientTimeout(requestTimeout))
 
 	tests := []struct {
 		description []string
@@ -114,33 +118,37 @@ func TestUserPutEndpoint(t *testing.T) {
 		t.Run(APITestName(endpoint, tt.want, tt.description...), func(t *testing.T) {
 			endpoint := endpoint + tt.path
 			r := e2e.NewRequest(http.MethodPut, endpoint, e2e.JSONBody(t, tt.body))
-			e2e.RunTest(t, r, tt.want)
+			runner.RunTest(t, r, tt.want)
 		})
 	}
 }
 
 // TestUserScenario shows a scenario testing example.
 func TestUserScenario(t *testing.T) {
+	runner := e2e.NewRunner(t, newRouter(), e2e.WithClientTimeout(requestTimeout))
 	resp := struct{ ID int }{}
 	// TestName: number methodName description
 	t.Run("1 UserPost registration", func(t *testing.T) {
 		const endpoint = "/v1/user"
 		r := e2e.NewRequest(http.MethodPost, endpoint, e2e.JSONBody(t, map[string]any{"name": "JoJo"}))
-		e2e.RunTest(t, r, http.StatusCreated, e2e.CaptureResponse(&resp), e2e.ModifyJSON(map[string]any{"created_time": 1677136520}), e2e.PrettyJSON)
+		runner.RunTest(t, r, http.StatusCreated, e2e.CaptureResponse(&resp), e2e.ModifyJSON(e2e.Fields{
+			"created_time": e2e.Verify(UnixTime).ReplaceWith(1677136520),
+			"upload_url":   URLValueModifier(e2e.Verify(URL)).MaskQueryExceptKeys("region"),
+		}), e2e.PrettyJSON)
 	})
 	t.Run("2 UserGet after registration", func(t *testing.T) {
 		endpoint := "/v1/user/" + strconv.Itoa(resp.ID)
 		r := e2e.NewRequest(http.MethodGet, endpoint, nil)
-		e2e.RunTest(t, r, http.StatusOK, e2e.PrettyJSON)
+		runner.RunTest(t, r, http.StatusOK, e2e.PrettyJSON)
 	})
 	t.Run("3 UserPut update user name", func(t *testing.T) {
 		endpoint := "/v1/user/" + strconv.Itoa(resp.ID)
 		r := e2e.NewRequest(http.MethodPut, endpoint, e2e.JSONBody(t, map[string]any{"name": "Giorno Giovanna"}))
-		e2e.RunTest(t, r, http.StatusNoContent)
+		runner.RunTest(t, r, http.StatusNoContent)
 	})
 	t.Run("4 UserGet after user name update", func(t *testing.T) {
 		endpoint := "/v1/user/" + strconv.Itoa(resp.ID)
 		r := e2e.NewRequest(http.MethodGet, endpoint, nil, e2e.WithQuery("typ", "new"))
-		e2e.RunTest(t, r, http.StatusOK, e2e.PrettyJSON)
+		runner.RunTest(t, r, http.StatusOK, e2e.PrettyJSON)
 	})
 }
