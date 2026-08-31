@@ -37,7 +37,7 @@ func TestProfileService(t *testing.T) {
 				e2egrpc.ModifyResponse(e2egrpc.Fields{
 					"id":        e2egrpc.VerifyFormat(VerifyProfileID),
 					"createdAt": e2egrpc.VerifyFormat(VerifyUnixtime).ReplaceWith(int64(1677136520)),
-					"uploadUrl": MaskURL(e2egrpc.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
+					"uploadUrl": URLValueModifier(e2egrpc.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
 				}),
 			},
 		},

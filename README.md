@@ -32,8 +32,8 @@ func TestUserScenario(t *testing.T) {
         runner.RunTest(t, r, http.StatusCreated,
             e2e.CaptureResponse(&created),
             e2e.ModifyJSON(e2e.Fields{
-                "created_time": e2e.ReplaceWith(1677136520),
-                "upload_url":   e2e.ReplaceWith("upload-url"),
+                "created_time": e2e.VerifyFormat(FormatUnixtime).ReplaceWith(1677136520),
+                "upload_url":   URLValueModifier(e2e.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
             }),
             e2e.PrettyJSON,
         )
@@ -75,8 +75,16 @@ func FormatUnixtime(t *testing.T, value json.Number) {
     }
 }
 
+func FormatURL(t *testing.T, value string) {
+    t.Helper()
+    if _, err := url.ParseRequestURI(value); err != nil {
+        t.Fatalf("JSON value is not a valid URL: %q", value)
+    }
+}
+
 runner.RunTest(t, r, http.StatusCreated, e2e.ModifyJSON(e2e.Fields{
     "created_time": e2e.VerifyFormat(FormatUnixtime).ReplaceWith(1677136520),
+    "upload_url":   URLValueModifier(e2e.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
 }), e2e.PrettyJSON)
 ```
 
@@ -104,8 +112,8 @@ runner.RunUnary(t,
     codes.OK,
     client.Get,
     e2egrpc.ModifyResponse(e2egrpc.Fields{
-        "createdAt": e2egrpc.ReplaceWith(int64(1677136520)),
-        "uploadUrl": e2egrpc.ReplaceWith("upload-url"),
+        "createdAt": e2egrpc.VerifyFormat(VerifyUnixtime).ReplaceWith(int64(1677136520)),
+        "uploadUrl": URLValueModifier(e2egrpc.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
     }),
 )
 ```

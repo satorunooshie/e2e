@@ -90,7 +90,7 @@ func TestUserPostEndpoint(t *testing.T) {
 			r := e2e.NewRequest(http.MethodPost, endpoint, e2e.JSONBody(t, tt.body))
 			runner.RunTest(t, r, tt.want, e2e.ModifyJSON(e2e.Fields{
 				"created_time": e2e.VerifyFormat(FormatUnixtime).ReplaceWith(1677136520),
-				"upload_url":   MaskURL(e2e.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
+				"upload_url":   URLValueModifier(e2e.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
 			}), e2e.PrettyJSON)
 		})
 	}
@@ -132,8 +132,8 @@ func TestUserScenario(t *testing.T) {
 		const endpoint = "/v1/user"
 		r := e2e.NewRequest(http.MethodPost, endpoint, e2e.JSONBody(t, map[string]any{"name": "JoJo"}))
 		runner.RunTest(t, r, http.StatusCreated, e2e.CaptureResponse(&resp), e2e.ModifyJSON(e2e.Fields{
-			"created_time": e2e.ReplaceWith(1677136520),
-			"upload_url":   e2e.ReplaceWith("upload-url"),
+			"created_time": e2e.VerifyFormat(FormatUnixtime).ReplaceWith(1677136520),
+			"upload_url":   URLValueModifier(e2e.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
 		}), e2e.PrettyJSON)
 	})
 	t.Run("2 UserGet after registration", func(t *testing.T) {

@@ -37,8 +37,8 @@ func FormatURL(t *testing.T, value string) {
 	}
 }
 
-// MaskURL starts a URL modifier chain from base validation or normalization.
-func MaskURL(base e2egrpc.ProtoValueModifier) urlValueModifier {
+// URLValueModifier starts a URL modifier chain from base validation or normalization.
+func URLValueModifier(base e2egrpc.ProtoValueModifier) urlValueModifier {
 	return urlValueModifier{base: base}
 }
 
@@ -51,13 +51,13 @@ func TestURLValueModifier(t *testing.T) {
 	}{
 		{
 			name:     "masks query values except kept key",
-			modifier: MaskURL(e2egrpc.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
+			modifier: URLValueModifier(e2egrpc.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
 			value:    "https://cdn.example.com/users/1/avatar.png?expires=1677136520&region=ap-northeast-1&signature=sig-123",
 			want:     "https://cdn.example.com/users/1/avatar.png?expires=int&region=ap-northeast-1&signature=string",
 		},
 		{
 			name:     "replaces path and masks all query values",
-			modifier: MaskURL(e2egrpc.VerifyFormat(FormatURL)).ReplaceURLPathWith("/download").MaskQueryExceptKeys(),
+			modifier: URLValueModifier(e2egrpc.VerifyFormat(FormatURL)).ReplaceURLPathWith("/download").MaskQueryExceptKeys(),
 			value:    "https://cdn.example.com/users/1/avatar.png?expires=1677136520&signature=sig-123",
 			want:     "https://cdn.example.com/download?expires=int&signature=string",
 		},
