@@ -12,16 +12,16 @@ import (
 )
 
 func init() {
-	registerBoolFlag("dump", "dump raw response")
-	registerBoolFlag("golden", "update golden files")
+	registerBoolFlag("e2e.dump", "dump raw response")
+	registerBoolFlag("e2e.golden", "update golden files")
 }
 
 func shouldDump() bool {
-	return boolFlagValue("dump")
+	return boolFlagValue("e2e.dump")
 }
 
 func shouldUpdateGolden() bool {
-	return boolFlagValue("golden")
+	return boolFlagValue("e2e.golden")
 }
 
 func registerBoolFlag(name, usage string) {

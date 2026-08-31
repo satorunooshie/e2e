@@ -25,8 +25,8 @@ func NewRunner(handler http.Handler) *Runner {
 type ResponseFilter func(t *testing.T, r *http.Response)
 
 // RunTest sends an HTTP request to the runner's handler, then checks the status
-// code and compares the response with the golden file. When -golden is set,
-// RunTest updates the golden file instead of comparing it.
+// code and compares the response with the golden file. When -e2e.golden is
+// set, RunTest updates the golden file instead of comparing it.
 func (runner *Runner) RunTest(t *testing.T, r *http.Request, want int, filters ...ResponseFilter) {
 	t.Helper()
 
