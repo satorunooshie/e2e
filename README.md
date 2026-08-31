@@ -32,8 +32,8 @@ func TestUserScenario(t *testing.T) {
         runner.RunTest(t, r, http.StatusCreated,
             e2e.CaptureResponse(&created),
             e2e.ModifyJSON(e2e.Fields{
-                "created_time": e2e.VerifyFormat(FormatUnixtime).ReplaceWith(1677136520),
-                "upload_url":   URLValueModifier(e2e.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
+                "created_time": e2e.Verify(UnixTime).ReplaceWith(1677136520),
+                "upload_url":   URLValueModifier(e2e.Verify(URL)).MaskQueryExceptKeys("region"),
             }),
             e2e.PrettyJSON,
         )
@@ -60,22 +60,26 @@ go test -v ./...
 
 Use `-e2e.dump` to log the raw response while debugging.
 
+Use `WithGoldenDir` when a package needs separate fixture directories, such as
+`e2e.WithGoldenDir("testdata/http")` or
+`e2egrpc.WithGoldenDir("testdata/grpc")`.
+
 ## JSON normalization
 
 Use `ModifyJSON` with `Fields` to replace nondeterministic response values.
 The library intentionally keeps validators minimal; define app-specific checks
-with `VerifyFormat`. Use `Format` when the helper needs to return a normalized
+with `Verify`. Use `Format` when the helper needs to return a normalized
 value for golden comparison.
 
 ```go
-func FormatUnixtime(t *testing.T, value json.Number) {
+func UnixTime(t *testing.T, value json.Number) {
     t.Helper()
     if _, err := value.Int64(); err != nil {
         t.Fatalf("JSON value is not a valid Unix timestamp: %v", value)
     }
 }
 
-func FormatURL(t *testing.T, value string) {
+func URL(t *testing.T, value string) {
     t.Helper()
     if _, err := url.ParseRequestURI(value); err != nil {
         t.Fatalf("JSON value is not a valid URL: %q", value)
@@ -83,8 +87,8 @@ func FormatURL(t *testing.T, value string) {
 }
 
 runner.RunTest(t, r, http.StatusCreated, e2e.ModifyJSON(e2e.Fields{
-    "created_time": e2e.VerifyFormat(FormatUnixtime).ReplaceWith(1677136520),
-    "upload_url":   URLValueModifier(e2e.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
+    "created_time": e2e.Verify(UnixTime).ReplaceWith(1677136520),
+    "upload_url":   URLValueModifier(e2e.Verify(URL)).MaskQueryExceptKeys("region"),
 }), e2e.PrettyJSON)
 ```
 
@@ -112,8 +116,8 @@ runner.RunUnary(t,
     codes.OK,
     client.Get,
     e2egrpc.ModifyResponse(e2egrpc.Fields{
-        "createdAt": e2egrpc.VerifyFormat(VerifyUnixtime).ReplaceWith(int64(1677136520)),
-        "uploadUrl": URLValueModifier(e2egrpc.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
+        "createdAt": e2egrpc.Verify(UnixTime).ReplaceWith(int64(1677136520)),
+        "uploadUrl": URLValueModifier(e2egrpc.Verify(URL)).MaskQueryExceptKeys("region"),
     }),
 )
 ```
@@ -121,3 +125,6 @@ runner.RunUnary(t,
 For runnable setups with in-process server wiring, metadata, trailers, status
 assertions, `UseJSONNames`, and response normalization, see the
 [gRPC example](https://github.com/satorunooshie/e2e/blob/main/grpc/example/main_test.go).
+Decoded status details are rendered under `status.details`; the transport-level
+`grpc-status-details-bin` trailer is omitted from the golden output. Other
+`*-bin` metadata values are base64-encoded.

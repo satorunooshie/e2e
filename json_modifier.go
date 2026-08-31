@@ -40,8 +40,8 @@ func Format[T, R any](format func(t *testing.T, value T) R) JSONValueModifierFun
 	}
 }
 
-// VerifyFormat adapts a typed validation function to JSONValueModifier.
-func VerifyFormat[T any](verify func(t *testing.T, value T)) JSONValueModifierFunc {
+// Verify adapts a typed validation function to JSONValueModifier.
+func Verify[T any](verify func(t *testing.T, value T)) JSONValueModifierFunc {
 	return Format(func(t *testing.T, value T) T {
 		t.Helper()
 		verify(t, value)

@@ -3,10 +3,12 @@ package grpc
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"net"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -22,8 +24,9 @@ import (
 )
 
 const (
-	defaultBufSize      = 1024 * 1024
-	defaultUnaryTimeout = 5 * time.Second
+	defaultBufSize       = 1024 * 1024
+	defaultUnaryTimeout  = 5 * time.Second
+	grpcStatusDetailsBin = "grpc-status-details-bin"
 )
 
 // Runner runs gRPC end-to-end tests against an in-process server.
@@ -33,6 +36,7 @@ type Runner struct {
 	conn             *grpc.ClientConn
 	protoJSONOptions protojson.MarshalOptions
 	unaryTimeout     time.Duration
+	goldenDir        string
 	closeOnce        sync.Once
 	closeErr         error
 }
@@ -55,6 +59,15 @@ func WithUnaryTimeout(timeout time.Duration) RunnerOption {
 	}
 }
 
+// WithGoldenDir sets the directory for golden files.
+func WithGoldenDir(dir string) RunnerOption {
+	return func(runner *Runner) {
+		if dir != "" {
+			runner.goldenDir = dir
+		}
+	}
+}
+
 // NewRunner starts server on an in-process listener and returns a Runner. It
 // registers a cleanup function with t to close the runner.
 func NewRunner(t testing.TB, server *grpc.Server, options ...RunnerOption) *Runner {
@@ -69,6 +82,7 @@ func NewRunner(t testing.TB, server *grpc.Server, options ...RunnerOption) *Runn
 		server:           server,
 		protoJSONOptions: defaultProtoJSONOptions(),
 		unaryTimeout:     defaultUnaryTimeout,
+		goldenDir:        defaultGoldenDir,
 	}
 	for _, option := range options {
 		if option == nil {
@@ -203,9 +217,9 @@ func (runner *Runner) RunUnary[Req proto.Message, Res proto.Message](
 		t.Logf("Raw gRPC response:\n%s", dump)
 	}
 
-	updateOrCompareGolden(t, "gRPC response", dump)
+	updateOrCompareGolden(t, "gRPC response", dump, runner.goldenDir)
 
-	t.Logf("<<< %s\n", goldenFileName(t))
+	t.Logf("<<< %s\n", goldenFileName(t, runner.goldenDir))
 }
 
 type grpcGolden struct {
@@ -277,7 +291,22 @@ func grpcStatus(t *testing.T, protoJSONOptions protojson.MarshalOptions, code co
 func metadataMap(md metadata.MD) map[string][]string {
 	result := make(map[string][]string, len(md))
 	for key, values := range md {
+		if key == grpcStatusDetailsBin {
+			continue
+		}
+		if strings.HasSuffix(key, "-bin") {
+			result[key] = encodedBinaryMetadata(values)
+			continue
+		}
 		result[key] = append([]string(nil), values...)
+	}
+	return result
+}
+
+func encodedBinaryMetadata(values []string) []string {
+	result := make([]string, len(values))
+	for i, value := range values {
+		result[i] = base64.StdEncoding.EncodeToString([]byte(value))
 	}
 	return result
 }

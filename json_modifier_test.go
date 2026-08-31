@@ -16,7 +16,7 @@ func TestModifyJSON(t *testing.T) {
 		return value
 	})
 
-	requireInt := VerifyFormat(func(t *testing.T, value json.Number) {
+	requireInt := Verify(func(t *testing.T, value json.Number) {
 		t.Helper()
 		if _, err := value.Int64(); err != nil {
 			t.Fatalf("JSON value is not an integer: %v", err)

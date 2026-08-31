@@ -41,8 +41,8 @@ func Format[T, R any](format func(t *testing.T, value T) R) ProtoValueModifierFu
 	}
 }
 
-// VerifyFormat adapts a typed validation function to ProtoValueModifier.
-func VerifyFormat[T any](verify func(t *testing.T, value T)) ProtoValueModifierFunc {
+// Verify adapts a typed validation function to ProtoValueModifier.
+func Verify[T any](verify func(t *testing.T, value T)) ProtoValueModifierFunc {
 	return Format(func(t *testing.T, value T) T {
 		t.Helper()
 		verify(t, value)

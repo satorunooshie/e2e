@@ -11,6 +11,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+const defaultGoldenDir = "testdata"
+
 func init() {
 	registerBoolFlag("e2e.dump", "dump raw response")
 	registerBoolFlag("e2e.golden", "update golden files")
@@ -40,31 +42,34 @@ func boolFlagValue(name string) bool {
 	return err == nil && value
 }
 
-func goldenFileName(t *testing.T) string {
+func goldenFileName(t *testing.T, goldenDir string) string {
 	t.Helper()
 
-	return filepath.Join("testdata", t.Name()+".golden")
+	if goldenDir == "" {
+		goldenDir = defaultGoldenDir
+	}
+	return filepath.Join(goldenDir, t.Name()+".golden")
 }
 
-func updateOrCompareGolden(t *testing.T, label string, got []byte) {
+func updateOrCompareGolden(t *testing.T, label string, got []byte, goldenDir string) {
 	t.Helper()
 
 	got = normalizeNewlines(got)
 	if shouldUpdateGolden() {
-		writeGolden(t, got)
+		writeGolden(t, got, goldenDir)
 		return
 	}
 
-	want := readGolden(t)
+	want := readGolden(t, goldenDir)
 	if diff := cmp.Diff(string(want), string(got)); diff != "" {
 		t.Errorf("%s mismatch (-want +got):\n%s", label, diff)
 	}
 }
 
-func writeGolden(t *testing.T, data []byte) {
+func writeGolden(t *testing.T, data []byte, goldenDir string) {
 	t.Helper()
 
-	filename := goldenFileName(t)
+	filename := goldenFileName(t, goldenDir)
 	if err := os.MkdirAll(filepath.Dir(filename), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -73,10 +78,10 @@ func writeGolden(t *testing.T, data []byte) {
 	}
 }
 
-func readGolden(t *testing.T) []byte {
+func readGolden(t *testing.T, goldenDir string) []byte {
 	t.Helper()
 
-	data, err := os.ReadFile(goldenFileName(t))
+	data, err := os.ReadFile(goldenFileName(t, goldenDir))
 	if err != nil {
 		t.Fatal(err)
 	}

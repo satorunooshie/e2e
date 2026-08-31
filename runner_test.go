@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"net/http"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -47,6 +48,26 @@ func TestRunnerRunTest(t *testing.T) {
 	}
 }
 
+func TestGoldenFileName(t *testing.T) {
+	t.Run("uses default directory", func(t *testing.T) {
+		got := goldenFileName(t, "")
+		want := filepath.Join(defaultGoldenDir, t.Name()+".golden")
+
+		if got != want {
+			t.Fatalf("goldenFileName() = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("uses configured directory", func(t *testing.T) {
+		got := goldenFileName(t, "testdata/http")
+		want := filepath.Join("testdata/http", t.Name()+".golden")
+
+		if got != want {
+			t.Fatalf("goldenFileName() = %q, want %q", got, want)
+		}
+	})
+}
+
 func TestNewRunnerOptions(t *testing.T) {
 	t.Run("ignores nil option", func(t *testing.T) {
 		runner := NewRunner(t, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), nil)
@@ -61,6 +82,14 @@ func TestNewRunnerOptions(t *testing.T) {
 
 		if got := runner.client.Timeout; got != 2*time.Second {
 			t.Fatalf("client timeout = %s, want %s", got, 2*time.Second)
+		}
+	})
+
+	t.Run("sets golden directory", func(t *testing.T) {
+		runner := NewRunner(t, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), WithGoldenDir("testdata/http"))
+
+		if got := runner.goldenDir; got != "testdata/http" {
+			t.Fatalf("goldenDir = %q, want %q", got, "testdata/http")
 		}
 	})
 

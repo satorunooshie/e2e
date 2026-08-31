@@ -75,6 +75,7 @@ func TestRenderResult(t *testing.T) {
 			method:           "/example.Auth/Get",
 			code:             codes.PermissionDenied,
 			response:         (*emptypb.Empty)(nil),
+			trailers:         metadata.Pairs(grpcStatusDetailsBin, string([]byte{0x08, 0x07})),
 			err:              statusWithDetails.Err(),
 			want: `{
   "method": "/example.Auth/Get",
@@ -159,6 +160,27 @@ func TestRenderResult(t *testing.T) {
 	}
 }
 
+func TestMetadataMap(t *testing.T) {
+	md := metadata.Pairs(
+		grpcStatusDetailsBin,
+		string([]byte{0x08, 0x03}),
+		"trace-bin",
+		string([]byte{0x01, 0x02, 0x03}),
+		"x-trailer",
+		"done",
+	)
+
+	got := metadataMap(md)
+	want := map[string][]string{
+		"trace-bin": []string{"AQID"},
+		"x-trailer": []string{"done"},
+	}
+
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Fatalf("metadataMap() mismatch (-want +got):\n%s", diff)
+	}
+}
+
 func TestNewRunner(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -166,6 +188,7 @@ func TestNewRunner(t *testing.T) {
 		options           []RunnerOption
 		wantUseProtoNames bool
 		wantUnaryTimeout  time.Duration
+		wantGoldenDir     string
 	}{
 		{
 			name: "uses proto names by default",
@@ -174,6 +197,7 @@ func TestNewRunner(t *testing.T) {
 			},
 			wantUseProtoNames: true,
 			wantUnaryTimeout:  defaultUnaryTimeout,
+			wantGoldenDir:     defaultGoldenDir,
 		},
 		{
 			name: "ignores nil option",
@@ -183,6 +207,7 @@ func TestNewRunner(t *testing.T) {
 			options:           []RunnerOption{nil},
 			wantUseProtoNames: true,
 			wantUnaryTimeout:  defaultUnaryTimeout,
+			wantGoldenDir:     defaultGoldenDir,
 		},
 		{
 			name: "uses JSON names when configured",
@@ -192,6 +217,7 @@ func TestNewRunner(t *testing.T) {
 			options:           []RunnerOption{UseJSONNames()},
 			wantUseProtoNames: false,
 			wantUnaryTimeout:  defaultUnaryTimeout,
+			wantGoldenDir:     defaultGoldenDir,
 		},
 		{
 			name: "uses unary timeout when configured",
@@ -201,6 +227,17 @@ func TestNewRunner(t *testing.T) {
 			options:           []RunnerOption{WithUnaryTimeout(2 * time.Second)},
 			wantUseProtoNames: true,
 			wantUnaryTimeout:  2 * time.Second,
+			wantGoldenDir:     defaultGoldenDir,
+		},
+		{
+			name: "uses golden directory when configured",
+			server: func() *grpc.Server {
+				return grpc.NewServer()
+			},
+			options:           []RunnerOption{WithGoldenDir("testdata/grpc")},
+			wantUseProtoNames: true,
+			wantUnaryTimeout:  defaultUnaryTimeout,
+			wantGoldenDir:     "testdata/grpc",
 		},
 	}
 
@@ -217,8 +254,31 @@ func TestNewRunner(t *testing.T) {
 			if got := runner.unaryTimeout; got != tt.wantUnaryTimeout {
 				t.Fatalf("unaryTimeout = %s, want %s", got, tt.wantUnaryTimeout)
 			}
+			if got := runner.goldenDir; got != tt.wantGoldenDir {
+				t.Fatalf("goldenDir = %q, want %q", got, tt.wantGoldenDir)
+			}
 		})
 	}
+}
+
+func TestGoldenFileName(t *testing.T) {
+	t.Run("uses default directory", func(t *testing.T) {
+		got := goldenFileName(t, "")
+		want := filepath.Join(defaultGoldenDir, t.Name()+".golden")
+
+		if got != want {
+			t.Fatalf("goldenFileName() = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("uses configured directory", func(t *testing.T) {
+		got := goldenFileName(t, "testdata/grpc")
+		want := filepath.Join("testdata/grpc", t.Name()+".golden")
+
+		if got != want {
+			t.Fatalf("goldenFileName() = %q, want %q", got, want)
+		}
+	})
 }
 
 func TestModifyResponse(t *testing.T) {
@@ -236,7 +296,7 @@ func TestModifyResponse(t *testing.T) {
 				ServerId:   "server-1",
 			},
 			fields: Fields{
-				"username":    VerifyFormat(requireString("before-filter")).ReplaceWith("after-filter"),
+				"username":    Verify(requireString("before-filter")).ReplaceWith("after-filter"),
 				"oauth_scope": ReplaceWith("users.write"),
 				"serverId": Format(func(t *testing.T, value string) string {
 					t.Helper()
@@ -306,8 +366,8 @@ func TestRunnerRunUnary(t *testing.T) {
 			want: codes.OK,
 			filters: []ResponseFilter{
 				ModifyResponse(Fields{
-					"username": VerifyFormat(requireString("before-filter")).ReplaceWith("after-filter"),
-					"serverId": VerifyFormat(requireString("server-1")).ReplaceWith("server"),
+					"username": Verify(requireString("before-filter")).ReplaceWith("after-filter"),
+					"serverId": Verify(requireString("server-1")).ReplaceWith("server"),
 				}),
 			},
 		},

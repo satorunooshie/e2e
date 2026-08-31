@@ -10,7 +10,7 @@ import (
 	e2egrpc "github.com/satorunooshie/e2e/grpc/v2"
 )
 
-func VerifyProfileID(t *testing.T, id int64) {
+func ProfileID(t *testing.T, id int64) {
 	t.Helper()
 
 	if id <= 0 {
@@ -18,7 +18,7 @@ func VerifyProfileID(t *testing.T, id int64) {
 	}
 }
 
-func VerifyUnixtime(t *testing.T, seconds int64) {
+func UnixTime(t *testing.T, seconds int64) {
 	t.Helper()
 
 	if seconds <= 0 {
@@ -29,7 +29,7 @@ func VerifyUnixtime(t *testing.T, seconds int64) {
 	}
 }
 
-func FormatURL(t *testing.T, value string) {
+func URL(t *testing.T, value string) {
 	t.Helper()
 
 	if _, err := url.ParseRequestURI(value); err != nil {
@@ -51,13 +51,13 @@ func TestURLValueModifier(t *testing.T) {
 	}{
 		{
 			name:     "masks query values except kept key",
-			modifier: URLValueModifier(e2egrpc.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
+			modifier: URLValueModifier(e2egrpc.Verify(URL)).MaskQueryExceptKeys("region"),
 			value:    "https://cdn.example.com/users/1/avatar.png?expires=1677136520&region=ap-northeast-1&signature=sig-123",
 			want:     "https://cdn.example.com/users/1/avatar.png?expires=int&region=ap-northeast-1&signature=string",
 		},
 		{
 			name:     "replaces path and masks all query values",
-			modifier: URLValueModifier(e2egrpc.VerifyFormat(FormatURL)).ReplaceURLPathWith("/download").MaskQueryExceptKeys(),
+			modifier: URLValueModifier(e2egrpc.Verify(URL)).ReplaceURLPathWith("/download").MaskQueryExceptKeys(),
 			value:    "https://cdn.example.com/users/1/avatar.png?expires=1677136520&signature=sig-123",
 			want:     "https://cdn.example.com/download?expires=int&signature=string",
 		},

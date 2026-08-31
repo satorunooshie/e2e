@@ -38,11 +38,11 @@ func TestNewRoundTripClient(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer func() {
+			t.Cleanup(func() {
 				if err := res.Body.Close(); err != nil {
 					t.Errorf("close response body: %v", err)
 				}
-			}()
+			})
 
 			if res.StatusCode != tt.statusCode {
 				t.Fatalf("status code = %d, want %d", res.StatusCode, tt.statusCode)

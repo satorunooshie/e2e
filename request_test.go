@@ -168,11 +168,11 @@ func TestMultipartBody(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				defer func() {
+				t.Cleanup(func() {
 					if err := file.Close(); err != nil {
 						t.Errorf("close uploaded file: %v", err)
 					}
-				}()
+				})
 				data, err := io.ReadAll(file)
 				if err != nil {
 					t.Fatal(err)

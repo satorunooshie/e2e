@@ -11,8 +11,8 @@ import (
 	"github.com/satorunooshie/e2e/v2"
 )
 
-// FormatUnixtime validates that value is a JSON Unix timestamp.
-func FormatUnixtime(t *testing.T, value json.Number) {
+// UnixTime validates that value is a JSON Unix timestamp.
+func UnixTime(t *testing.T, value json.Number) {
 	t.Helper()
 
 	seconds, err := value.Int64()
@@ -24,8 +24,8 @@ func FormatUnixtime(t *testing.T, value json.Number) {
 	}
 }
 
-// FormatURL validates that value is a URL string.
-func FormatURL(t *testing.T, value string) {
+// URL validates that value is a URL string.
+func URL(t *testing.T, value string) {
 	t.Helper()
 
 	if _, err := url.ParseRequestURI(value); err != nil {
@@ -47,13 +47,13 @@ func TestURLValueModifier(t *testing.T) {
 	}{
 		{
 			name:     "masks query values except kept key",
-			modifier: URLValueModifier(e2e.VerifyFormat(FormatURL)).MaskQueryExceptKeys("region"),
+			modifier: URLValueModifier(e2e.Verify(URL)).MaskQueryExceptKeys("region"),
 			value:    "https://cdn.example.com/users/1/avatar.png?expires=1677136520&region=ap-northeast-1&signature=sig-123",
 			want:     "https://cdn.example.com/users/1/avatar.png?expires=int&region=ap-northeast-1&signature=string",
 		},
 		{
 			name:     "replaces path and masks all query values",
-			modifier: URLValueModifier(e2e.VerifyFormat(FormatURL)).ReplaceURLPathWith("/download").MaskQueryExceptKeys(),
+			modifier: URLValueModifier(e2e.Verify(URL)).ReplaceURLPathWith("/download").MaskQueryExceptKeys(),
 			value:    "https://cdn.example.com/users/1/avatar.png?expires=1677136520&signature=sig-123",
 			want:     "https://cdn.example.com/download?expires=int&signature=string",
 		},

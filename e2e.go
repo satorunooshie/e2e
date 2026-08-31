@@ -14,12 +14,14 @@ import (
 
 // Runner runs HTTP end-to-end tests against a handler.
 type Runner struct {
-	client *http.Client
+	client    *http.Client
+	goldenDir string
 }
 
 type runnerConfig struct {
 	configureServer []func(*http.Server)
 	configureClient []func(*http.Client)
+	goldenDir       string
 }
 
 // RunnerOption configures a Runner.
@@ -58,6 +60,15 @@ func FollowRedirects() RunnerOption {
 	})
 }
 
+// WithGoldenDir sets the directory for golden files.
+func WithGoldenDir(dir string) RunnerOption {
+	return func(config *runnerConfig) {
+		if dir != "" {
+			config.goldenDir = dir
+		}
+	}
+}
+
 // NewRunner returns a Runner backed by httptest.NewTestServer.
 func NewRunner(t testing.TB, handler http.Handler, options ...RunnerOption) *Runner {
 	t.Helper()
@@ -79,11 +90,15 @@ func NewRunner(t testing.TB, handler http.Handler, options ...RunnerOption) *Run
 	for _, configure := range config.configureClient {
 		configure(client)
 	}
-	return &Runner{client: client}
+	return &Runner{
+		client:    client,
+		goldenDir: config.goldenDir,
+	}
 }
 
 func defaultRunnerConfig() runnerConfig {
 	return runnerConfig{
+		goldenDir: defaultGoldenDir,
 		configureClient: []func(*http.Client){
 			func(client *http.Client) {
 				client.CheckRedirect = func(*http.Request, []*http.Request) error {
@@ -150,9 +165,9 @@ func (runner *Runner) RunTest(t *testing.T, r *http.Request, want int, filters .
 		t.Fatal(err)
 	}
 
-	updateOrCompareGolden(t, "HTTP response", dump)
+	updateOrCompareGolden(t, "HTTP response", dump, runner.goldenDir)
 
-	t.Logf("<<< %s\n", goldenFileName(t))
+	t.Logf("<<< %s\n", goldenFileName(t, runner.goldenDir))
 }
 
 func resetResponseBody(t *testing.T, r *http.Response) {
